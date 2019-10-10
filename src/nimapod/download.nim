@@ -45,11 +45,14 @@ proc extractIndex(content: string): Table[Date, Picture] =
 
   open(x, strm, "index")
   # The list of pictures is inside a huge <b> tag. The whole page contains
-  # 4 <b> tags, the one we want being the first.
+  # 4 <b> tags, the one we want being the second.
+  var second = false
   while true:
     x.next()
     if x.kind == xmlElementStart and x.elementName == "b":
-      break
+      if second:
+        break
+      second = true
 
   while true:
     x.next
