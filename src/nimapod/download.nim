@@ -22,8 +22,8 @@ proc getPicturesDateInDir(dir: string): HashSet[Date] =
     except IndexError:
       continue
 
-    let ignored = toHashSet(readApodIgnore(dir))
-    return alreadyPresent + ignored
+  let ignored = toHashSet(readApodIgnore(dir))
+  return alreadyPresent + ignored
 
 
 func href2Date(href: string): Date =
