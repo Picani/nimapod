@@ -94,7 +94,7 @@ proc main(params: Params) =
     quit(0)
 
   # First, check what needs to be downloaded.
-  var toDownload = getPicturesToDownload(params.dest)
+  let toDownload = getPicturesToDownload(params.dest)
 
   # Do we want to actually download?
   # Nope!
@@ -109,7 +109,7 @@ proc main(params: Params) =
 
     if params.verbose:
       for picture in toDownload:
-        echo fmt"{picture.date}: picture.title"
+        echo fmt"{picture.date}: {picture.title}"
 
   # Yup!
   else:
