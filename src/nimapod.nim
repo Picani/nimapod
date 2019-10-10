@@ -79,7 +79,7 @@ proc cli(): Params =
 #-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-
 # The main procedure
 
-proc main(params: Params) {.async.} =
+proc main(params: Params) =
   # Do we want to see the ignored dates?
 
   if params.ignore:
@@ -94,84 +94,47 @@ proc main(params: Params) {.async.} =
     quit(0)
 
   # First, check what needs to be downloaded.
-  let alreadyDownloaded = getPicturesDateInDir(params.dest)
-
-  let index = getIndex()
-  var allDates: HashSet[Date]
-  for date in index.keys():
-    allDates.incl(date)
-
-  let toDownload = allDates - alreadyDownloaded
+  var toDownload = getPicturesToDownload(params.dest)
 
   # Do we want to actually download?
   # Nope!
   if params.dryRun:
-    case toDownload.card
+    case toDownload.len
     of 0:
       echo "All pictures are already here!"
     of 1:
       echo "There is only one picture to download."
     else:
-      echo "There are ", toDownload.card, " pictures to download."
+      echo "There are ", toDownload.len, " pictures to download."
 
     if params.verbose:
-      for date in toDownload:
-        echo date.year, "/", date.month, "/", date.day, ": ", index[date].title
+      for picture in toDownload:
+        echo fmt"{picture.date}: picture.title"
 
   # Yup!
   else:
-    case toDownload.card
+    case toDownload.len
     of 0:
       echo "All pictures are already here!"
     of 1:
       echo "Downloading one picture..."
     else:
-      echo "Downloading ", toDownload.card, " pictures..."
+      echo "Downloading ", toDownload.len, " pictures..."
 
-    # First, we create all directories
-    createDir(params.dest)
-    for date in toDownload:
-      createDir(fmt"{params.dest}/{date.year}/{date.month}")
-
-    # Let's get back the pictures.
-    var pictures = newSeq[Picture]()
-    for date in toDownload:
-      pictures.add(index[date])
-
-    # Let's fetch the URL and check for errors or things we don't want.
-    var futuresUrls = newSeq[Future[Picture]]()
+    let pictures = waitFor downloadPictures(params.dest, toDownload)
     for picture in pictures:
-      futuresUrls.add(getPictureUrl(picture))
-
-    let picturesUrls = await all(futuresUrls)
-    var futuresDownloads = newSeq[Future[Picture]]()
-    var toIgnore = newSeq[Picture]()
-    for pict in picturesUrls:
-      case pict.error
+      case picture.error:
       of "":
-        futuresDownloads.add(fetchPicture(params.dest, pict))
+        if params.verbose:
+          echo fmt"Downloaded {picture.date} ({picture.title})."
       of "Not an image":
-        toIgnore.add(pict)
         if params.verbose:
-          echo fmt"Skipping {pict.date} ({pict.title}) because it's not a picture."
+          echo fmt"Skipping {picture.date} ({picture.title}) because it's not a picture."
       else:
-        writeLine(stderr, &"Error while retrieving {pict.date} ({pict.title}):")
-        writeLine(stderr, "  ", pict.error)
-
-    # We update the .apodignore file
-    appendApodIgnore(params.dest, toIgnore)
-
-    # Let's actually download the pictures and check for errors.
-    let picturesDownloads = await all(futuresDownloads)
-    for pict in picturesDownloads:
-      if pict.error == "":
-        if params.verbose:
-          echo fmt"Downloaded {pict.date} ({pict.title})."
-      else:
-        writeLine(stderr, &"Error while retrieving {pict.date} ({pict.title}):")
-        writeLine(stderr, "  ", pict.error)
+        writeLine(stderr, &"Error while retrieving {picture.date} ({picture.title}):")
+        writeLine(stderr, "  ", picture.error)
 
 
 when(isMainModule):
   let params = cli()
-  waitFor main(params)
+  main(params)

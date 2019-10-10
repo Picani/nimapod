@@ -8,7 +8,7 @@ import common
 #-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-
 # Procedures that works on the index
 
-proc getPicturesDateInDir*(dir: string): HashSet[Date] =
+proc getPicturesDateInDir(dir: string): HashSet[Date] =
   ## Walk through ``dir``, extracting the date from the path of each file
   ## (which is ``dir/year/month/day - title.(png|jpg|gif)``). Add to the
   ## results the date in ``dir/.apodignore``.
@@ -77,17 +77,32 @@ proc extractIndex(content: string): Table[Date, Picture] =
   x.close()
 
 
-proc getIndex*(): Table[Date, Picture] =
+proc getIndex(): Table[Date, Picture] =
   ## Download the index page and return the index of pictures.
   var client = newHttpClient()
   let indexContent = client.getContent(apodIndex)
   extractIndex(indexContent)
 
 
+proc getPicturesToDownload*(root: string): seq[Picture] =
+  ## Download the index, compare it against the pictures in ``root``,
+  ## exclude the pictures to ignore and return the remaining pictures.
+  let
+    alreadyThere = getPicturesDateInDir(root)
+    index = getIndex()
+  var dates: HashSet[Date]
+  for date in index.keys():
+      dates.incl(date)
+
+  let datesToDownload = dates - alreadyThere
+  for date in datesToDownload:
+      result.add(index[date])
+
+
 #-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-
 # Downloading procedures
 
-proc getPictureUrl*(pict: Picture): Future[Picture] {.async.} =
+proc getPictureUrl(pict: Picture): Future[Picture] {.async.} =
   ## Asynchronously fetch the URL for that ``picture``. Return a new picture
   ## with either an URL and an empty error, or an error and an empty URL.
   result = Picture(date: pict.date, title: pict.title)
@@ -122,7 +137,7 @@ proc getPictureUrl*(pict: Picture): Future[Picture] {.async.} =
       result.error = body
 
 
-proc fetchPicture*(root: string, pict: Picture): Future[Picture] {.async.} =
+proc fetchPicture(root: string, pict: Picture): Future[Picture] {.async.} =
   ## Actually fetch the picture and save it into ``root/YYYY/MM/DD - title``.
   ## If something's wrong, put a description into the returned Picture.error
   ## field, else left it empty.
@@ -138,3 +153,41 @@ proc fetchPicture*(root: string, pict: Picture): Future[Picture] {.async.} =
 
   if future.failed:
     result.error = future.error.msg
+
+
+proc downloadPictures*(root: string, pictures: seq[Picture]): Future[seq[Picture]] {.async.} =
+  ## Download all ``pictures`` and put them in ``root`` accordingly to their
+  ## date, while updating the ``.apodignore`` file if needed.
+  ## Return a new seq of pictures with the ``error`` field set if any.
+
+  # First, we create all directories
+  createDir(root)
+  for picture in pictures:
+    var date = picture.date
+    createDir(fmt"{root}/{date.year}/{date.month}")
+
+  # Let's fetch the URL and check for errors or things we don't want.
+  var futuresUrls = newSeq[Future[Picture]]()
+  for picture in pictures:
+    futuresUrls.add(getPictureUrl(picture))
+
+  let urls = await all(futuresUrls)
+  var
+    futureDownloads = newSeq[Future[Picture]]()
+    toIgnore = newSeq[Picture]()
+  for picture in urls:
+    case picture.error:
+    of "":
+      futureDownloads.add(fetchPicture(root, picture))
+    of "Not an image":
+      toIgnore.add(picture)
+      result.add(picture)
+    else:
+      result.add(picture)
+
+  # We update the .apodignore file
+  appendApodIgnore(root, toIgnore)
+
+  # Let's actually download the pictures and check for errors.
+  let downloaded = await all(futureDownloads)
+  result &= downloaded
