@@ -1,6 +1,17 @@
-import asyncdispatch, os, parseopt, sets, strformat, tables
+import asyncdispatch, os, parsecfg, parseopt, sets, strformat, tables
 
 import nimapod/[common, download]
+
+
+proc readConfig(): Config =
+  ## Read the config file ``$XDG_CONFIG_HOME/nimapodrc`` and return the
+  ## config it contains.
+  ## If the file doesn't exist, don't create it and return an empty config.
+  var path = joinPath(getConfigDir(), "nimapodrc")
+  if existsFile(path):
+    result = loadConfig(path)
+  else:
+    result = newConfig()
 
 
 #-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-
@@ -41,8 +52,11 @@ proc writeVersion() =
 
 
 proc cli(): Params =
+  var config = readConfig()
+
   result.dryRun = false
   result.verbose = false
+  result.dest = config.getSectionValue("", "destination")
 
   if paramCount() == 0:
     writeHelp()
