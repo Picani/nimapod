@@ -24,6 +24,7 @@ type
     dryRun: bool
     verbose: bool
     ignore: bool
+    apikey: string
 
 
 proc writeHelp() =
@@ -45,6 +46,7 @@ Options:
   -v, --verbose   Be verbose
   -n, --dry-run   Print what would be downloaded and exit
   -i, --ignore    Print the ignored dates and exit
+  --apikey:KEY    Use this API key instead of the default one
 """
 
 proc writeVersion() =
@@ -57,6 +59,7 @@ proc cli(): Params =
   result.dryRun = false
   result.verbose = false
   result.dest = config.getSectionValue("", "destination")
+  result.apikey = config.getSectionValue("", "apikey")
 
   if paramCount() == 0:
     writeHelp()
@@ -80,10 +83,15 @@ proc cli(): Params =
         result.dryRun = true
       of "i", "ignore":
         result.ignore = true
+      of "apikey":
+        result.apikey = val
       else:
         discard
     else:
       discard
+
+  if result.apikey == "":
+    result.apikey = "DEMO_KEY"
 
   if result.dest == "":
     writeLine stderr, "Error: no destination provided."
@@ -135,7 +143,7 @@ proc main(params: Params) =
     else:
       echo "Downloading ", toDownload.len, " pictures..."
 
-    let pictures = waitFor downloadPictures(params.dest, toDownload)
+    let pictures = waitFor downloadPictures(params.dest, params.apikey, toDownload)
     for picture in pictures:
       case picture.error:
       of "":

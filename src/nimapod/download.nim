@@ -105,13 +105,13 @@ proc getPicturesToDownload*(root: string): seq[Picture] =
 #-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-
 # Downloading procedures
 
-proc getPictureUrl(pict: Picture): Future[Picture] {.async.} =
+proc getPictureUrl(apikey: string, pict: Picture): Future[Picture] {.async.} =
   ## Asynchronously fetch the URL for that ``picture``. Return a new picture
   ## with either an URL and an empty error, or an error and an empty URL.
   result = Picture(date: pict.date, title: pict.title)
 
   var client = newAsyncHttpClient()
-  let query = fmt"{apodApi}?date={pict.date.year}-{pict.date.month}-{pict.date.day}&api_key=DEMO_KEY&hd=true"
+  let query = fmt"{apodApi}?date={pict.date.year}-{pict.date.month}-{pict.date.day}&api_key={apikey}&hd=true"
 
   let future = client.get(query)
   yield future
@@ -158,7 +158,7 @@ proc fetchPicture(root: string, pict: Picture): Future[Picture] {.async.} =
     result.error = future.error.msg
 
 
-proc downloadPictures*(root: string, pictures: seq[Picture]): Future[seq[Picture]] {.async.} =
+proc downloadPictures*(root, apikey: string, pictures: seq[Picture]): Future[seq[Picture]] {.async.} =
   ## Download all ``pictures`` and put them in ``root`` accordingly to their
   ## date, while updating the ``.apodignore`` file if needed.
   ## Return a new seq of pictures with the ``error`` field set if any.
@@ -172,7 +172,7 @@ proc downloadPictures*(root: string, pictures: seq[Picture]): Future[seq[Picture
   # Let's fetch the URL and check for errors or things we don't want.
   var futuresUrls = newSeq[Future[Picture]]()
   for picture in pictures:
-    futuresUrls.add(getPictureUrl(picture))
+    futuresUrls.add(getPictureUrl(apikey, picture))
 
   let urls = await all(futuresUrls)
   var
