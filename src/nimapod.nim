@@ -1,5 +1,7 @@
 import asyncdispatch, os, parsecfg, parseopt, sets, strformat, tables
 
+import docopt
+
 import nimapod/[common, download]
 
 
@@ -17,6 +19,33 @@ proc readConfig(): Config =
 #-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-
 # Making the CLI
 
+let doc = fmt"""
+{appName}
+
+Download and manage pictures from NASA Astronomy Picture Of the Day (APOD).
+
+The download command download and put the pictures into a hierarchy of folders
+sorted by date. By default, it uses the DEMO_KEY api key, which offers a very
+limited number of requests.
+
+The ignore command prints out the ignored dates.
+
+Usage:
+  {appName} download [<destination>] [-n -v] [--apikey=KEY]
+  {appName} ignore   [<destination>]
+
+  {appName} -h|--help
+  {appName} -V|--version
+
+Options:
+  -h, --help       Show this help and exit.
+  -V, --version    Show version information.
+  -v, --verbose    Be verbose.
+
+  -n, --dry-run    Print what would be downloaded and exit.
+  --apikey=KEY     Use this API key instead of the default one.
+"""
+
 type
   Params = object
     ## The CLI parameters
@@ -27,75 +56,26 @@ type
     apikey: string
 
 
-proc writeHelp() =
-  echo appName, " ", appVersion
-  echo """
-Download pictures from NASA Astronomy Picture Of the Day (APOD) and put
-them into a hierarchy of folders sorted by date.
-For now, use the DEMO_KEY api key, which offers a very limited number
-of requests.
-
-USAGE: apod_downloader [OPTION] destination
-
-Argument:
-  destination     The root of the folders hierarchy
-
-Options:
-  -h, --help      Show this help and exit
-  -V, --version   Show version information
-  -v, --verbose   Be verbose
-  -n, --dry-run   Print what would be downloaded and exit
-  -i, --ignore    Print the ignored dates and exit
-  --apikey:KEY    Use this API key instead of the default one
-"""
-
-proc writeVersion() =
-  echo appName, " ", appVersion
-
-
 proc cli(): Params =
   var config = readConfig()
+  var args = docopt(doc, version = fmt"{appName} v{appVersion}")
 
-  result.dryRun = false
-  result.verbose = false
   result.dest = config.getSectionValue("", "destination")
   result.apikey = config.getSectionValue("", "apikey")
 
-  if paramCount() == 0:
-    writeHelp()
-    quit(0)
+  if args["<destination>"]:
+    result.dest = $args["<destination>"]
 
-  for kind, key, val in getopt():
-    case kind:
-    of cmdArgument:
-      result.dest = key
-    of cmdLongOption, cmdShortOption:
-      case key:
-      of "h", "help":
-        writeHelp()
-        quit(0)
-      of "V", "version":
-        writeVersion()
-        quit(0)
-      of "v", "verbose":
-        result.verbose = true
-      of "n", "dry-run":
-        result.dryRun = true
-      of "i", "ignore":
-        result.ignore = true
-      of "apikey":
-        result.apikey = val
-      else:
-        discard
-    else:
-      discard
+  if args["ignore"]:
+    result.ignore = true
+    return result  # We don't care for the rest
 
-  if result.apikey == "":
+  result.dryRun = args["--dry-run"]
+  result.verbose = args["--verbose"]
+  if args["--apikey"]:
+    result.apikey = $args["--apikey"]
+  elif result.apikey == "":
     result.apikey = "DEMO_KEY"
-
-  if result.dest == "":
-    writeLine stderr, "Error: no destination provided."
-    quit(1)
 
 
 #-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-
