@@ -1,4 +1,4 @@
-import asyncdispatch, os, parsecfg, parseopt, sets, strformat, tables
+import asyncdispatch, browsers, os, parsecfg, parseopt, sets, strformat, tables
 
 import docopt
 
@@ -15,6 +15,10 @@ proc readConfig(): Config =
   else:
     result = newConfig()
 
+proc openDate(d: Date) =
+  let path = fmt"ap{d.year[2..3]}{d.month}{d.day}.html"
+  openDefaultBrowser(fmt"https://apod.nasa.gov/apod/{path}")
+
 
 #-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-
 # Making the CLI
@@ -30,9 +34,13 @@ limited number of requests.
 
 The ignore command prints out the ignored dates.
 
+The open command opens the given date in the user's default browser.
+
+
 Usage:
   {appName} download [<destination>] [-n -v] [--apikey=KEY]
   {appName} ignore   [<destination>]
+  {appName} open     <date>
 
   {appName} -h|--help
   {appName} -V|--version
@@ -54,6 +62,8 @@ type
     verbose: bool
     ignore: bool
     apikey: string
+    open: bool
+    date: string
 
 
 proc cli(): Params =
@@ -70,6 +80,11 @@ proc cli(): Params =
     result.ignore = true
     return result  # We don't care for the rest
 
+  if args["open"]:
+    result.open = true
+    result.date = $args["<date>"]
+    return result  # We don't care for the rest
+
   result.dryRun = args["--dry-run"]
   result.verbose = args["--verbose"]
   if args["--apikey"]:
@@ -82,8 +97,13 @@ proc cli(): Params =
 # The main procedure
 
 proc main(params: Params) =
-  # Do we want to see the ignored dates?
+  # Check for the open command
+  if params.open:
+    let d = newDate(params.date)
+    openDate(d)
+    quit()
 
+  # Do we want to see the ignored dates?
   if params.ignore:
     let ignored = readApodIgnore(params.dest)
     if ignored.len == 0:

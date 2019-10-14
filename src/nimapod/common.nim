@@ -40,6 +40,43 @@ func `$`*(d: Date): string =
   ## system.$ implementation for Date
   return fmt"{d.year}/{d.month}/{d.day}"
 
+func newDate*(s: string): Date =
+  ## Create a Date from the string ``s``. It is expected to be of the form
+  ## YYYY/MM/DD or YYYY_MM_DD or YYYY-MM-DD or YYYYMMDD, with YYYY the year in either 4
+  ## digits or 2 digits (95 to 99 being 1995 to 1999, the rest being after
+  ## 1999), MM being the month (from 01 to 12) and DD the day (from 01 to 31).
+  ##
+  ## No check is done on the created Date (*i.e.* it's possible to create a
+  ## February 31). It's up to the user to create meaningful date.
+  var year, month, day: string
+  case s.len
+  of 10:  # YYYY/MM/DD or YYYY_MM_DD or YYYY-MM-DD
+    year = s[..3]
+    month = s[5..6]
+    day = s[8..9]
+  of 8:
+    if s[2].isDigit():  # YYYYMMDD
+      year = s[..3]
+      month = s[4..5]
+      day = s[6..7]
+    else:  # YY/MM/DD or YY_MM_DD or YY-MM-DD
+      year = s[..1]
+      month = s[3..4]
+      day = s[6..7]
+  of 6:  # YYMMDD
+    year = s[..1]
+    month = s[2..3]
+    day = s[4..5]
+  else:
+    raise newException(ValueError, fmt"unable to read date {s}")
+
+  if year.len == 2:
+    if year[0] == '9':
+      year = "19" & year
+    else:
+      year = "20" & year
+  Date(year: year, month: month, day: day)
+
 
 #-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-
 # The .apodignore file
