@@ -149,7 +149,8 @@ proc fetchPicture(root: string, pict: Picture): Future[Picture] {.async.} =
   var client = newAsyncHttpClient()
   let d = pict.date
   let ext = splitFile(pict.url)[2]
-  let filename = fmt"{root}/{d.year}/{d.month}/{d.day} - {pict.title}{ext}"
+  let title = pict.title.replace("/", " ")
+  let filename = fmt"{root}/{d.year}/{d.month}/{d.day} - {title}{ext}"
 
   let future = client.downloadFile(pict.url, filename)
   yield future
