@@ -1,6 +1,6 @@
 # Package
 
-version       = "2.0.1"
+version       = "2.0.2"
 author        = "Picani"
 description   = "Download pictures from NASA\'s APOD"
 license       = "WTFPL"
