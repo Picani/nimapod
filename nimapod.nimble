@@ -11,5 +11,5 @@ bin           = @["nimapod"]
 
 # Dependencies
 
-requires "nim >= 0.20.2"
+requires "nim >= 1.4"
 requires "docopt >= 0.6.8"
