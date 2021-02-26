@@ -7,7 +7,7 @@ import hashes, os, sequtils, strformat, strutils
 # The constants
 
 const appName* = "nimapod"
-const appVersion* = "2.0.2"
+const appVersion* = "2.0.3"
 const apodIndex* = "https://apod.nasa.gov/apod/archivepixFull.html"
 const apodApi* = "https://api.nasa.gov/planetary/apod"
 
