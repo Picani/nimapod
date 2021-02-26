@@ -1,4 +1,4 @@
-import asyncdispatch, browsers, os, parsecfg, parseopt, sets, strformat, tables
+import asyncdispatch, browsers, os, parsecfg, strformat, tables
 
 import docopt
 
@@ -109,7 +109,7 @@ proc main(params: Params) =
     if ignored.len == 0:
       echo "No dates ignored."
     else:
-      echo fmt"{ignored.len} to dates to ignore."
+      echo fmt"{ignored.len} dates to ignore."
       if params.verbose:
         for i in ignored:
           echo i
