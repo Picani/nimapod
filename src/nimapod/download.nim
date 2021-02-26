@@ -19,7 +19,7 @@ proc getPicturesDateInDir(dir: string): HashSet[Date] =
       let d = Date(year: date[0], month: date[1], day: date[2])
       alreadyPresent.incl(d)
       # If we cannot split the name correctly, it doesn't interest us.
-    except IndexError:
+    except IndexDefect:
       continue
 
   let ignored = toHashSet(readApodIgnore(dir))

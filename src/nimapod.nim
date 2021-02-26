@@ -10,7 +10,7 @@ proc readConfig(): Config =
   ## config it contains.
   ## If the file doesn't exist, don't create it and return an empty config.
   var path = joinPath(getConfigDir(), "nimapodrc")
-  if existsFile(path):
+  if fileExists(path):
     result = loadConfig(path)
   else:
     result = newConfig()

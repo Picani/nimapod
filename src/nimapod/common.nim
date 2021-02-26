@@ -88,7 +88,7 @@ proc readApodIgnore*(root: string): seq[Date] =
   let path = fmt"{root}/.apodignore"
   var file: File
   defer: file.close()
-  if not existsFile(path):
+  if not fileExists(path):
     file = open(path, fmWrite)
   else:
     file = open(path)
