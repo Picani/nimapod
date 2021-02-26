@@ -93,6 +93,7 @@ proc getPicturesToDownload*(root: string): seq[Picture] =
   let
     alreadyThere = getPicturesDateInDir(root)
     index = getIndex()
+
   var dates: HashSet[Date]
   for date in index.keys():
       dates.incl(date)
@@ -159,7 +160,7 @@ proc fetchPicture(root: string, pict: Picture): Future[Picture] {.async.} =
     result.error = future.error.msg
 
 
-proc downloadPictures*(root, apikey: string, pictures: seq[Picture]): Future[seq[Picture]] {.async.} =
+proc downloadPictures(root, apikey: string, pictures: seq[Picture]): Future[seq[Picture]] {.async.} =
   ## Download all ``pictures`` and put them in ``root`` accordingly to their
   ## date, while updating the ``.apodignore`` file if needed.
   ## Return a new seq of pictures with the ``error`` field set if any.
@@ -195,3 +196,53 @@ proc downloadPictures*(root, apikey: string, pictures: seq[Picture]): Future[seq
   # Let's actually download the pictures and check for errors.
   let downloaded = await all(futureDownloads)
   result &= downloaded
+
+
+proc download*(root, apiKey: string, verbose, dryRun: bool) {.async.} =
+  ## Correspond to the **download** command.
+  ##
+  ## In ``root``, create the needed directories, download the missing
+  ## pictures and update the .apodignore file. Write to stdout or stderr
+  ## what needs to be, depending upon the value of ``verbose``. Use the
+  ## ``apiKey`` to download the picture and the NASA API. If ``dryRun``
+  ## is true, only print the (number of) missing pictures.
+  # First, check what needs to be downloaded.
+  let toDownload = getPicturesToDownload(root)
+
+  # Do we want to actually download?
+  # Nope!
+  if dryRun:
+    case toDownload.len
+    of 0:
+      echo "All pictures are already here!"
+    of 1:
+      echo "There is only one picture to download."
+    else:
+      echo "There are ", toDownload.len, " pictures to download."
+
+    if verbose:
+      for picture in toDownload:
+        echo fmt"{picture.date}: {picture.title}"
+
+  # Yup!
+  else:
+    case toDownload.len
+    of 0:
+      echo "All pictures are already here!"
+    of 1:
+      echo "Downloading one picture..."
+    else:
+      echo "Downloading ", toDownload.len, " pictures..."
+
+    let pictures = await downloadPictures(root, apikey, toDownload)
+    for picture in pictures:
+      case picture.error:
+      of "":
+        if verbose:
+          echo fmt"Downloaded {picture.date} ({picture.title})."
+      of "Not an image":
+        if verbose:
+          echo fmt"Skipping {picture.date} ({picture.title}) because it's not a picture."
+      else:
+        writeLine(stderr, &"Error while retrieving {picture.date} ({picture.title}):")
+        writeLine(stderr, "  ", picture.error)

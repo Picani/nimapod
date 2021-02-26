@@ -115,46 +115,7 @@ proc main(params: Params) =
           echo i
     quit(0)
 
-  # First, check what needs to be downloaded.
-  let toDownload = getPicturesToDownload(params.dest)
-
-  # Do we want to actually download?
-  # Nope!
-  if params.dryRun:
-    case toDownload.len
-    of 0:
-      echo "All pictures are already here!"
-    of 1:
-      echo "There is only one picture to download."
-    else:
-      echo "There are ", toDownload.len, " pictures to download."
-
-    if params.verbose:
-      for picture in toDownload:
-        echo fmt"{picture.date}: {picture.title}"
-
-  # Yup!
-  else:
-    case toDownload.len
-    of 0:
-      echo "All pictures are already here!"
-    of 1:
-      echo "Downloading one picture..."
-    else:
-      echo "Downloading ", toDownload.len, " pictures..."
-
-    let pictures = waitFor downloadPictures(params.dest, params.apikey, toDownload)
-    for picture in pictures:
-      case picture.error:
-      of "":
-        if params.verbose:
-          echo fmt"Downloaded {picture.date} ({picture.title})."
-      of "Not an image":
-        if params.verbose:
-          echo fmt"Skipping {picture.date} ({picture.title}) because it's not a picture."
-      else:
-        writeLine(stderr, &"Error while retrieving {picture.date} ({picture.title}):")
-        writeLine(stderr, "  ", picture.error)
+  waitFor download(params.dest, params.apiKey, params.verbose, params.dryRun)
 
 
 when(isMainModule):
